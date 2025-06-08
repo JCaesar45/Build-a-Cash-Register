@@ -1,0 +1,166 @@
+** start of index.html **
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cash Register</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    #change-due {
+      margin-top: 20px;
+      font-weight: bold;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+  <h1>Cash Register</h1>
+
+  <p>Price: $<span id="price-display"></span></p>
+
+  <label for="cash">Cash Provided: </label>
+  <input type="number" id="cash" min="0" step="0.01" />
+  <button id="purchase-btn">Purchase</button>
+
+  <div id="change-due"></div>
+
+  <!-- Link to external JavaScript file -->
+  <script src="script.js"></script>
+</body>
+</html>
+
+
+** end of index.html **
+
+** start of styles.css **
+
+
+
+** end of styles.css **
+
+** start of script.js **
+
+// Global variables price and cid as per your requirement
+let price = 1.87; // Change this to test other scenarios
+let cid = [
+  ['PENNY', 1.01],
+  ['NICKEL', 2.05],
+  ['DIME', 3.1],
+  ['QUARTER', 4.25],
+  ['ONE', 90],
+  ['FIVE', 55],
+  ['TEN', 20],
+  ['TWENTY', 60],
+  ['ONE HUNDRED', 100]
+];
+
+// Currency values mapping for calculations
+const currencyUnit = {
+  "PENNY": 0.01,
+  "NICKEL": 0.05,
+  "DIME": 0.10,
+  "QUARTER": 0.25,
+  "ONE": 1,
+  "FIVE": 5,
+  "TEN": 10,
+  "TWENTY": 20,
+  "ONE HUNDRED": 100
+};
+
+// When DOM loads, set price display and add event listener
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('price-display').textContent = price.toFixed(2);
+
+  document.getElementById('purchase-btn').addEventListener('click', () => {
+    const cashInput = document.getElementById('cash');
+    const changeDueEl = document.getElementById('change-due');
+    const cash = parseFloat(cashInput.value);
+
+    if (isNaN(cash)) {
+      alert("Please enter a valid cash amount.");
+      return;
+    }
+
+    // Case: Customer cash less than price
+    if (cash < price) {
+      alert("Customer does not have enough money to purchase the item");
+      changeDueEl.textContent = "";
+      return;
+    }
+
+    // Case: Exact payment
+    if (cash === price) {
+      changeDueEl.textContent = "No change due - customer paid with exact cash";
+      return;
+    }
+
+    // Calculate change due
+    let changeDue = +(cash - price).toFixed(2);
+
+    // Calculate total cash in drawer
+    let totalCID = cid.reduce((acc, curr) => acc + curr[1], 0).toFixed(2);
+
+    if (totalCID < changeDue) {
+      // Not enough cash in drawer
+      changeDueEl.textContent = "Status: INSUFFICIENT_FUNDS";
+      return;
+    }
+
+    if (totalCID == changeDue) {
+      // Drawer closes with exact change
+      changeDueEl.textContent = "Status: CLOSED";
+      // List all cash in drawer as change (sorted highest to lowest)
+      const sortedCID = [...cid].sort((a, b) => currencyUnit[b[0]] - currencyUnit[a[0]]);
+      const details = sortedCID
+        .filter(unit => unit[1] > 0)
+        .map(unit => `${unit[0]}: $${unit[1].toFixed(2)}`)
+        .join(' ');
+      changeDueEl.textContent += details ? " " + details : "";
+      return;
+    }
+
+    // Drawer is open, we need to return change in coins/bills
+    let changeArr = [];
+    let cidCopy = [...cid].reverse(); // highest to lowest denomination
+
+    let remainingChange = changeDue;
+
+    for (let [unit, amountInDrawer] of cidCopy) {
+      let unitValue = currencyUnit[unit];
+      let amountToReturn = 0;
+
+      while (remainingChange >= unitValue && amountInDrawer > 0) {
+        remainingChange = +(remainingChange - unitValue).toFixed(2);
+        amountInDrawer = +(amountInDrawer - unitValue).toFixed(2);
+        amountToReturn += unitValue;
+      }
+
+      if (amountToReturn > 0) {
+        changeArr.push([unit, amountToReturn]);
+      }
+    }
+
+    // If after trying all denominations we still have remaining change > 0,
+    // then we cannot return exact change
+    if (remainingChange > 0) {
+      changeDueEl.textContent = "Status: INSUFFICIENT_FUNDS";
+      return;
+    }
+
+    // Status OPEN with change denominations listed
+    let changeDetails = changeArr
+      .map(item => `${item[0]}: $${item[1].toFixed(2)}`)
+      .join(' ');
+
+    changeDueEl.textContent = `Status: OPEN ${changeDetails}`;
+  });
+});
+
+
+** end of script.js **
+
